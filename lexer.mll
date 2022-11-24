@@ -1,0 +1,74 @@
+(* Analyseur lexical pour Petit C *)
+
+{
+  open Lexing
+  open Parser
+
+  (* exception à lever pour signaler une erreur lexicale *)
+  exception Lexing_error of string
+
+}
+
+let chiffre = ['0'-'9']
+let alpha = ['a'-'z' 'A'-'Z']
+let ident = (alpha | '_') (alpha | chiffre | '_')*
+let carac = ([^ '\\' ''']) | "\\" | "\'" | "\n" | "\t"
+let integer = '0' | (['1'-'9'] chiffre*) | (''' carac ''')
+let space = ' ' | '\t'
+let comment = "//" [^'\n']* 
+
+rule token = parse
+    | '\n' {Lexing.new_line; token lexbuf}
+    | space+ {token lexbuf}
+    | comment {token lexbuf}
+    | space {token lexbuf}
+    | ident as x {IDENT(x)}
+    | integer as x {INTEGER(int_of_string x)}
+    | "#include" space* "<" ([^ '>']* as package) ">" space* "\n" {INCLUDE(package)}
+    | "/*" {multiline_comment lexbuf}
+    | "bool" {BOOL}
+    | "break" {BREAK}
+    | "continue" {CONTINUE}
+    | "else" {ELSE}
+    | "false" {FALSE}
+    | "for" {FOR}
+    | "if" {IF}
+    | "int" {INT}
+    | "NULL" {NULL}
+    | "return" {RETURN}
+    | "sizeof" {SIZEOF}
+    | "true" {TRUE}
+    | "void" {VOID}
+    | "while" {WHILE}
+    | "==" {EQQ}
+    | "=" {EQ}
+    | "||" {OR}
+    | "&&" {AND}
+    | "&" {AMPERSAND}
+    | "!=" {NEQ}
+    | "<=" {LEQ}
+    | "<" {LT}
+    | ">=" {GEQ}
+    | ">" {GT}
+    | "++" {INC}
+    | "+" {PLUS}
+    | "--" {DEC}
+    | "-" {MINUS}
+    | "*" {TIMES}
+    | "/" {DIV}
+    | "%" {MOD}
+    | "!" {NOT}
+    | "{" {LBRACKET}
+    | "}" {RBRACKET}
+    | "[" {LSQ}
+    | "]" {RSQ}
+    | "(" {LP}
+    | ")" {RP}
+    | ";" {SEMICOLON}
+    | "," {COMMA}
+    | eof {EOF}
+    | _ as c {raise (Lexing_error ("illegal character: " ^ String.make 1 c))}
+    and multiline_comment = parse
+    | "*/" {token lexbuf}
+    | '\n' {Lexing.new_line; multiline_comment lexbuf}
+    | _ {multiline_comment lexbuf}
