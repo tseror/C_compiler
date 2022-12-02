@@ -3,9 +3,9 @@
 type include_ = string
 type ident = string
 
-type type_ = Void | Int | Bool | Star of type_
+type ctype = Void | Int | Bool | Star of ctype
 
-type param = type_ * ident
+type param = ctype * ident
 
 type binop =
   | Badd | Bsub | Bmul | Bdiv | Bmod    (* + - * / % *)
@@ -16,17 +16,17 @@ type expr =
   | Eint of int | True | False | Null
   | Eident of ident
   | Epointer of expr
-  | Eget of expr * expr
   | Eassign of expr * expr
   | Ecall of ident * expr list
+  | Einc1 of expr | Edec1 of expr | Einc2 of expr | Edec2 of expr
   | Eaddress of expr
   | Enot of expr
   | Eneg of expr
   | Eplus of expr
   | Ebinop of binop * expr * expr
-  | Esizeof of type_
+  | Esizeof of ctype
 
-type decl_var = type_ * ident * expr option
+type decl_var = ctype * ident * expr option
 
 type instruction = 
   | None
@@ -42,7 +42,7 @@ and decl_instr =
   | Decl_var of decl_var 
   | Decl_fct of decl_fct
   | Decl_instr of instruction
-and decl_fct = type_ * ident * param list * bloc
+and decl_fct = ctype * ident * param list * bloc
 and bloc = decl_instr list
 
 type fichier = include_ list * decl_fct list

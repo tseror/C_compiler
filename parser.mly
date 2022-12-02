@@ -44,31 +44,31 @@ fichier:
 ;
 
 decl_fct:
-    | t = type_ x = IDENT pl = separated_list(COMMA, param) b = bloc {(t, x, pl, b)}
+    | t = ctype x = IDENT LP pl = separated_list(COMMA, param) RP b = bloc {(t, x, pl, b)}
 ;
 
-type_:
+ctype:
     | VOID {Void}
     | INT {Int} 
     | BOOL {Bool} 
-    | t = type_ TIMES {Star t}
+    | t = ctype TIMES {Star t}
 ;
 
 param:
-    | t = type_ x = IDENT {(t, x)}
+    | t = ctype x = IDENT {(t, x)}
 ;
 
 expr:
     | i = INTEGER {Eint i} | TRUE {True} | FALSE {False} | NULL {Null}
     | x = IDENT {Eident x}
     | TIMES e = expr {Epointer e}
-    | e1 = expr LSQ e2 = expr RSQ {Eget (e1, e2)}
+    | e1 = expr LSQ e2 = expr RSQ {Epointer(Ebinop(Badd, e1, e2))}
     | e1 = expr EQ e2 = expr {Eassign (e1, e2)}
     | f = IDENT LP args = separated_list(COMMA, expr) RP {Ecall (f, args)}
-    | INC e = expr | DEC e = expr | e = expr INC | e = expr DEC {e} (* Non implémenté *)
+    | INC e = expr {Einc1 e} | DEC e = expr {Edec1 e}| e = expr INC {Einc2 e} | e = expr DEC {Edec2 e}
     | AMPERSAND e = expr {Eaddress e} | NOT e = expr {Enot e} | MINUS e = expr {Eneg e} | PLUS e = expr {Eplus e}
     | e1 = expr op = operateur e2 = expr {Ebinop (op, e1, e2)}
-    | SIZEOF LP t = type_ RP {Esizeof t}
+    | SIZEOF LP t = ctype RP {Esizeof t}
     | LP e = expr RP {e}
 %inline operateur:
     | EQQ {Beqq} | NEQ {Bneq} | LT {Blt} | LEQ {Ble} | GT {Bgt} | GEQ {Bge}
@@ -100,6 +100,6 @@ decl_instruction:
 ;
 
 decl_var:
-    | t = type_ var = IDENT {(t, var, None)}
-    | t = type_ var = IDENT EQ e = expr {(t, var, Some e)}
+    | t = ctype var = IDENT {(t, var, None)}
+    | t = ctype var = IDENT EQ e = expr {(t, var, Some e)}
 ;

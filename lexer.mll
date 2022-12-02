@@ -12,19 +12,18 @@
 let chiffre = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let ident = (alpha | '_') (alpha | chiffre | '_')*
-let carac = ([^ '\\' ''']) | "\\" | "\'" | "\n" | "\t"
-let integer = '0' | (['1'-'9'] chiffre*) | (''' carac ''')
+let carac = ([^ '\\' '\'']) | '\\' '\\' | "\\" '\'' | "\\" 'n' | "\\" 't'
+let integer = '0' | (['1'-'9'] chiffre*) | ('\'' carac '\'')
 let space = ' ' | '\t'
 let comment = "//" [^'\n']* 
 
 rule token = parse
-    | '\n' {Lexing.new_line; token lexbuf}
+    | '\n' {Lexing.new_line lexbuf; token lexbuf}
     | space+ {token lexbuf}
     | comment {token lexbuf}
     | space {token lexbuf}
-    | ident as x {IDENT(x)}
-    | integer as x {INTEGER(int_of_string x)}
-    | "#include" space* "<" ([^ '>']* as package) ">" space* "\n" {INCLUDE(package)}
+    | integer as x {INTEGER(try int_of_string x with _ -> Char.code x.[1])}
+    | "#include" space* "<" ([^ '>']* as package) ">" space* "\n" {Lexing.new_line lexbuf; INCLUDE(package)}
     | "/*" {multiline_comment lexbuf}
     | "bool" {BOOL}
     | "break" {BREAK}
@@ -66,9 +65,11 @@ rule token = parse
     | ")" {RP}
     | ";" {SEMICOLON}
     | "," {COMMA}
+    | ident as x {IDENT(x)}
     | eof {EOF}
     | _ as c {raise (Lexing_error ("illegal character: " ^ String.make 1 c))}
     and multiline_comment = parse
     | "*/" {token lexbuf}
-    | '\n' {Lexing.new_line; multiline_comment lexbuf}
+    | '\n' {Lexing.new_line lexbuf; multiline_comment lexbuf}
     | _ {multiline_comment lexbuf}
+    | eof {raise (Lexing_error "unclosed comment")}
