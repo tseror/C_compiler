@@ -52,7 +52,8 @@ let () =
 	report (lexeme_start_p lb, lexeme_end_p lb);
 	eprintf "syntax error@.";
 	exit 1
-    | Typer.TypingError s ->
+    | Typer.TypingError (s, loc) ->
+  report loc;
 	eprintf "Typing error: %s@." s;
 	exit 1
     | e -> if !parse_only then exit 0;
