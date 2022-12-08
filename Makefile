@@ -1,6 +1,6 @@
 all: clean petitc.exe
 tests:
-	cd tests; bash test -2 ../petitc.exe
+	cd tests; bash test -2b ../petitc.exe
 petitc.exe:
 	dune build petitc.exe
 

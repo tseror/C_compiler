@@ -30,7 +30,8 @@ let rec type_expr (env:typeEnv) (e:expr) = match e.desc_e with
   | Null -> Star(Void)
   | True | False -> Bool
   | Eint _ -> Int
-  | Eident x -> begin try IdMap.find x (fst env) with Not_found -> raise(TypingError ((Printf.sprintf "undeclared indentifier %s" x), e.loc)) end
+  | Eident x -> begin try IdMap.find x (fst env) with Not_found -> try fst (IdMap.find x (snd env)) with Not_found ->
+    raise(TypingError ((Printf.sprintf "undeclared indentifier %s" x), e.loc)) end
   | Esizeof t -> if compare_type t Void then raise(TypingError ("cannot take the sizeof Void", e.loc)) else Int
   | Epointer e -> begin match type_expr env e with 
     | Star t when not (compare_type t Void) -> t
@@ -38,7 +39,7 @@ let rec type_expr (env:typeEnv) (e:expr) = match e.desc_e with
     end
   | Eaddress e -> if not (lvalue env e) then raise(TypingError ("cannot take the address of a non left value", e.loc)) else Star(type_expr env e)
   | Eassign (e1, e2) -> if not (lvalue env e1) then raise(TypingError ("cannot assign to a non left value", e.loc)) else
-    if compare_type (type_expr env e1) (type_expr env e2) then type_expr env e1 else raise(TypingError ("cannot assign variables of different types", e.loc))
+    let t1, t2 = type_expr env e1, type_expr env e2 in if compare_type t1 t2 then type_expr env e1 else raise(TypingError (Printf.sprintf "cannot assign an expression of type %s to a variable of type %s" (string_of_type t2) (string_of_type t1), e.loc))
   | Einc1 e | Einc2 e -> 
     if not (lvalue env e) then raise(TypingError ("cannot increment a non left value", e.loc)) else type_expr env e
   | Edec1 e | Edec2 e -> 
@@ -47,14 +48,15 @@ let rec type_expr (env:typeEnv) (e:expr) = match e.desc_e with
   | Enot e -> let t = type_expr env e in if compare_type t Void then raise(TypingError ("not of Void", e.loc)) else Int
   | Ebinop (op, e1, e2) -> begin let t1 = type_expr env e1 in let t2 = type_expr env e2 in match op with
     | Beqq | Bneq | Blt | Ble | Bgt | Bge -> 
-      if compare_type t1 t2 then Int else raise(TypingError ("comparison of differently typed objects", e.loc))
+      if compare_type t1 Void then raise (TypingError ("comparison of Void", e.loc)) else
+      if compare_type t1 t2 then Int else raise(TypingError (Printf.sprintf "cannot compare object of types %s and %s" (string_of_type t1) (string_of_type t2), e.loc))
     | Bmul | Bdiv | Bmod | Band | Bor ->
       if ((compare_type t1 t2) && (compare_type t1 Int)) then Int else raise(TypingError ("operation on non-integers", e.loc))
     | Bsub -> begin match t1 with
-      | Int | Bool -> if compare_type t1 t2 then Int else raise(TypingError ("substraction of integer with non-integer", e.loc))
+      | Int | Bool -> if compare_type t1 t2 then Int else raise(TypingError (Printf.sprintf "cannot substract an integer with expression of type %s" (string_of_type t2), e.loc))
       | Star(t) -> begin match t2 with
         | Int | Bool -> t1
-        | Star(t') -> if t == t' then Int else raise(TypingError ("substraction of different pointer types", e.loc))
+        | Star(t') -> if t == t' then Int else raise(TypingError (Printf.sprintf "substraction of different pointer types, %s and %s" (string_of_type t2) (string_of_type t1), e.loc))
         | _ -> raise(TypingError ("illegal substraction", e.loc)) 
       end
       | Void -> raise(TypingError ("substraction on Void object", e.loc))
@@ -63,13 +65,13 @@ let rec type_expr (env:typeEnv) (e:expr) = match e.desc_e with
       | Int | Bool -> begin match t2 with
         | Int | Bool -> Int
         | Star(t) -> Star(t)
-        | Void -> raise(TypingError ("addition of Void object", e.loc))
+        | Void -> raise(TypingError ("cannot add a Void object", e.loc))
         end
       | Star(t) -> begin match t2 with
         | Int | Bool -> Star(t)
-        | _ -> raise(TypingError ("illegal addition", e.loc))
+        | _ -> raise(TypingError (Printf.sprintf "cannot add objects of types %s and %s" (string_of_type t1) (string_of_type t2), e.loc))
         end
-      | Void -> raise(TypingError ("addition of Void object", e.loc))
+      | Void -> raise(TypingError ("cannot add a Void object", e.loc))
       end
     end 
   | Ecall(f, params) -> let ftype, params_types = try IdMap.find f (snd env) with Not_found -> raise(TypingError ("undefined function", e.loc)) in 
@@ -83,7 +85,7 @@ let rec check_type_instr ?(inloop = false) (env:typeEnv) (t0:ctype) (instr:instr
   | None -> ()
   | Expr e -> let _ = type_expr env e in ()
   | Return (None, loc) -> if t0 == Void then () else raise(TypingError ("void function returns non-void object", loc))
-  | Return (Some e, loc) -> let t = type_expr env e in if compare_type t t0 then () else raise(TypingError ("function returns wrong type", loc))
+  | Return (Some e, loc) -> let t = type_expr env e in if compare_type t t0 then () else raise(TypingError (Printf.sprintf "function returns type %s, type %s was expected" (string_of_type t) (string_of_type t0), loc))
   | If (e, i1, i2) -> let t = type_expr env e in 
     if (compare_type t Void) then raise(TypingError ("void condition in if statement", e.loc)) else (); check_type_instr ~inloop env t0 i1; check_type_instr ~inloop env t0 i2
   | Break loc -> if inloop then () else raise(TypingError ("break outside of a loop", loc))
@@ -101,13 +103,13 @@ and check_type_bloc ?(inloop = false) (env:typeEnv) (declared:declared) (t0:ctyp
   | i :: bq -> match i with 
     | Decl_var {desc_dv=(t, x, e); loc=loc} ->
       if (compare_type t Void) then raise(TypingError ("can't declare void variable", loc)) else
-      if (IdSet.mem x declared) then raise(TypingError ("variable name already used in block", loc)) else
+      if (IdSet.mem x declared) then raise(TypingError (Printf.sprintf "variable name %s already used in block" x, loc)) else
       let env' = (IdMap.add x t (fst env), IdMap.remove x (snd env)) in let declared' = (IdSet.add x declared) in
-      if Option.is_some e && not (compare_type t (type_expr env' (Option.get e))) then raise(TypingError ("variable declaration is of the wrong type", loc))
+      if Option.is_some e && not (compare_type t (type_expr env' (Option.get e))) then raise(TypingError (Printf.sprintf "variable declaration is of the wrong type: expression of type %s was expected, but an expression of type %s was given" (string_of_type t) (string_of_type (type_expr env' (Option.get e))), loc))
       else check_type_bloc ~inloop env' declared' t0 bq
     | Decl_fct {desc_df=(t, f, pl, bf); loc=loc} -> 
       if (IdSet.mem f declared) then raise(TypingError ("function name already used in block", loc)) else
-      let env' = ((fst env), IdMap.add f (t, List.map fst pl) (snd env)) in let declared' = (IdSet.add f declared) in
+      let env' = (IdMap.remove f (fst env), IdMap.add f (t, List.map fst pl) (snd env)) in let declared' = (IdSet.add f declared) in
       check_type_bloc ~inloop:false env' (IdSet.empty) t ((List.map (fun (pt, px) -> Decl_var {desc_dv=(pt, px, None); loc=loc}) pl) @ bf); check_type_bloc ~inloop env' declared' t0 bq
     | Decl_instr i' -> check_type_instr ~inloop env t0 i'; check_type_bloc ~inloop env declared t0 bq
 
