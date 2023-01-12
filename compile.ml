@@ -107,7 +107,7 @@ let rec compile_expr = function
     | Bsub -> subq (reg rbx) (reg rax)
     | Bmul -> imulq (reg rbx) (reg rax)
     | Bdiv -> cqto ++ idivq !%rbx
-    | Bmod -> cqto ++ idivq !%rbx ++ movq (reg rbx) (reg rax)
+    | Bmod -> cqto ++ idivq !%rbx ++ movq (reg rdx) (reg rax)
     | Beqq -> cmpq (reg rbx) (reg rax) ++ sete (reg al)
     | Bneq -> cmpq (reg rbx) (reg rax) ++ setne (reg al)
     | Blt -> cmpq (reg rbx) (reg rax) ++ setl (reg al)
