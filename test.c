@@ -1,3 +1,4 @@
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,4 +10,11 @@ int main() {
   *p = 'A';
   putchar(x);
   putchar(*p);
+  x = 'B';
+  putchar(x);
+  putchar(*p);
+  *p = 'C';
+  putchar(x);
+  putchar(*p);
+  putchar(10);
 }
