@@ -6,5 +6,7 @@ int main() {
   int x;
   int *p;
   p = &x;
-  *p = 120;
+  *p = 'A';
+  putchar(x);
+  putchar(*p);
 }
