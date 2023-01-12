@@ -4,6 +4,7 @@ open Format
 open Lexing
 open Parser
 open Typer
+open Compile
 
 let usage = "usage: petitc [options] file.c"
 
@@ -43,6 +44,9 @@ let () =
     (* Typing *)
     Typer.main f;
     if !type_only then exit 0;
+    let x86 = Compile.main f in 
+    let name = List.hd (String.split_on_char '.' file) in
+    X86_64.print_in_file (name^".s") {text = x86; data = X86_64.nop}
   with 
     | Lexer.Lexing_error s ->
 	report (lexeme_start_p lb, lexeme_end_p lb);

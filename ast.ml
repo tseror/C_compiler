@@ -57,3 +57,41 @@ and bloc = decl_instr list
 
 type fichier = include_ list * decl_fct list
 
+(* Post-allocation des variables *)
+
+type shift = int
+
+type aexpr =
+  | Aint of int | ATrue | AFalse | ANull
+  | Avar of shift
+  | Apointer of aexpr
+  | Aassign of aexpr * aexpr
+  | Acall of ident * aexpr list
+  | Ainc1 of aexpr | Adec1 of aexpr | Ainc2 of aexpr | Adec2 of aexpr
+  | Aaddress of aexpr
+  | Anot of aexpr
+  | Aneg of aexpr
+  | Aplus of aexpr
+  | Abinop of binop * aexpr * aexpr
+  | Asizeof of ctype
+
+type adecl_var = ctype * shift * aexpr option
+
+type ainstruction =
+  | ANone
+  | AExpr of aexpr 
+  | ABloc of abloc
+  | AIf of aexpr * ainstruction * ainstruction
+  | AWhile of aexpr * ainstruction
+  | AFor of adecl_var option * aexpr option * aexpr list * ainstruction
+  | AReturn of aexpr option 
+  | ABreak
+  | AContinue
+and adecl_instr = 
+  | ADecl_var of adecl_var 
+  | ADecl_fct of adecl_fct
+  | ADecl_instr of ainstruction
+and adecl_fct = ctype * ident * param list * abloc
+and abloc = adecl_instr list
+
+type afichier = include_ list * adecl_fct list
