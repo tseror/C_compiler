@@ -3,6 +3,10 @@
 #include <stdio.h>
 
 int main() {
-  putchar(216/2);
+  int x;
+  int *p;
+  p = &x;
+  *p = 'A';
+  putchar(x);
+  putchar(*p);
 }
-
