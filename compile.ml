@@ -68,10 +68,10 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
     | di :: bq -> match di with
       | Decl_var {desc_dv=(t, x, eo); loc=loc} -> begin match eo with
         | Some e -> let ae = alloc_expr env e in 
-          let abq, fpbq = alloc_bloc (Smap.add x (fpcur+8) env) (fpcur+8) bq in 
-          ADecl_var(t, fpcur+8, Some ae) :: abq, fpbq
-        | None -> let abq, fpbq = alloc_bloc (Smap.add x (fpcur+8) env) (fpcur+8) bq in 
-          ADecl_var(t, fpcur+8, None) :: abq, fpbq
+          let abq, fpbq = alloc_bloc (Smap.add x (-(fpcur+8)) env) (fpcur+8) bq in 
+          ADecl_var(t, -(fpcur+8), Some ae) :: abq, fpbq
+        | None -> let abq, fpbq = alloc_bloc (Smap.add x (-(fpcur+8)) env) (fpcur+8) bq in 
+          ADecl_var(t, -(fpcur+8), None) :: abq, fpbq
         end
       | Decl_fct {desc_df=(t, f, pl, bf); loc=loc} ->
         let env', fpnew =
@@ -94,10 +94,10 @@ let rec compile_expr = function
   | Aint i -> pushq (imm i)
   | ATrue -> pushq (imm 1) | AFalse -> pushq (imm 0)
   | ANull -> nop 
-  | Avar ofs_x -> movq (ind ~ofs:ofs_x rsp) (reg rdi) ++ pushq (reg rdi)
+  | Avar ofs_x -> movq (ind ~ofs:ofs_x rbp) (reg rdi) ++ pushq (reg rdi)
   | Apointer e -> compile_expr e ++ popq rdi ++ pushq (ind rdi)
   | Aaddress e -> begin match e with
-    | Avar ofs_x -> leaq (ind ~ofs:ofs_x rsp) rdi ++ pushq (reg rdi)
+    | Avar ofs_x -> leaq (ind ~ofs:ofs_x rbp) rdi ++ pushq (reg rdi)
     | Apointer p -> compile_expr p
     | _ -> failwith "anomaly"
   end
@@ -134,7 +134,7 @@ let rec compile_expr = function
       ++ call f ++ movq (reg rbx) (reg rsp)
     else call f ++ addq (imm (8 * List.length ael)) (reg rsp)
   | Aassign (ea1, ea2) -> begin match ea1 with
-    | Avar ofs_x -> compile_expr ea2 ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rsp)
+    | Avar ofs_x -> compile_expr ea2 ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
     | Apointer address -> 
       compile_expr ea2 ++ compile_expr address ++
       popq rdi ++ popq rsi ++ movq (reg rsi) (ind rdi)
@@ -177,7 +177,7 @@ and compile_bloc = function
   | [] -> nop
   | di :: bq -> begin match di with
     | ADecl_var(_, _, None) -> nop
-    | ADecl_var (_, ofs_x, Some e) -> compile_expr e ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rsp)
+    | ADecl_var (_, ofs_x, Some e) -> compile_expr e ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
     | ADecl_fct (frame_size, f, pl, bf) -> label f ++ 
     pushq (reg rbp) ++ movq (reg rsp) (reg rbp) ++ 
     subq (imm frame_size) (reg rsp) ++ compile_bloc bf ++
