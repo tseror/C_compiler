@@ -93,7 +93,7 @@ let pushn n = subq (imm n) !%rsp
 let rec compile_expr = function
   | Aint i -> pushq (imm i)
   | ATrue -> pushq (imm 1) | AFalse -> pushq (imm 0)
-  | ANull -> nop 
+  | ANull -> pushq (imm 0)
   | Avar ofs_x -> movq (ind ~ofs:ofs_x rbp) (reg rdi) ++ pushq (reg rdi)
   | Apointer e -> compile_expr e ++ popq rdi ++ pushq (ind rdi)
   | Aaddress e -> begin match e with
