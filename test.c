@@ -4,9 +4,6 @@
 
 int main() {
   int x;
-  int *p;
-  p = &x;
-  *p = 'A';
+  x = 10;
   putchar(x);
-  putchar(*p);
 }
