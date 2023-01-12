@@ -6,7 +6,4 @@ int main() {
   int x;
   int *p;
   p = &x;
-  *p = 'A';
-  putchar(x);
-  putchar(*p);
 }
