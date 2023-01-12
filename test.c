@@ -4,17 +4,11 @@
 #include <stdio.h>
 
 int main() {
-  int x;
   int *p;
-  p = &x;
-  *p = 'A';
-  putchar(x);
-  putchar(*p);
-  x = 'B';
-  putchar(x);
-  putchar(*p);
-  *p = 'C';
-  putchar(x);
-  putchar(*p);
-  putchar(10);
+  p = malloc(5 * sizeof(int));
+  p[0] = 1000;
+  p[1] = 2000;
+  p[2] = 3000;
+  p[3] = 4000;
+  p[4] = 5000;
 }
