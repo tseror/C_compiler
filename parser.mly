@@ -25,7 +25,7 @@
 %left PLUS MINUS
 %left TIMES DIV MOD
 %right NOT INC DEC AMPERSAND
-%nonassoc LSQ RSQ
+%nonassoc LSQ
 %nonassoc RP
 %nonassoc ELSE
 
