@@ -80,8 +80,8 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
             let fpnew = fpnew + 8 in Smap.add (snd p) fpnew env', fpnew)
           (env, fpcur) pl in
         let abf, fpbf = alloc_bloc env' fpnew bf in
-        let abq, fpbq = alloc_bloc env fpnew bq in 
-        ADecl_fct (t, f, pl, abf) :: abq, fpbf
+        let abq, fpbq = alloc_bloc env fpcur bq in 
+        ADecl_fct (fpbf, f, pl, abf) :: abq, fpbq
       | Decl_instr i -> let ai, fpi = alloc_instr env fpcur i in
         let abq, fpbq = alloc_bloc env (fpcur+fpi) bq in (ADecl_instr ai) :: abq, fpbq
 
@@ -94,10 +94,10 @@ let rec compile_expr = function
   | Aint i -> pushq (imm i)
   | ATrue -> pushq (imm 1) | AFalse -> pushq (imm 0)
   | ANull -> nop 
-  | Avar ofs_x -> pushq (ind ~ofs:ofs_x rbp)
+  | Avar ofs_x -> pushq (ind ~ofs:ofs_x rsp)
   | Apointer e -> compile_expr e ++ popq rdi ++ pushq (ind rdi)
   | Aaddress e -> begin match e with
-    | Avar ofs_x -> leaq (ind ~ofs:ofs_x rbp) rdi ++ pushq (reg rdi)
+    | Avar ofs_x -> leaq (ind ~ofs:ofs_x rsp) rdi ++ pushq (reg rdi)
     | Apointer p -> compile_expr p
     | _ -> failwith "anomaly"
   end
@@ -134,7 +134,7 @@ let rec compile_expr = function
       ++ call f ++ movq (reg rbx) (reg rsp)
     else call f ++ addq (imm (8 * List.length ael)) (reg rsp)
   | Aassign (ea1, ea2) -> begin match ea1 with
-    | Avar ofs_x -> compile_expr ea2 ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
+    | Avar ofs_x -> compile_expr ea2 ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rsp)
     | Apointer address -> compile_expr ea2 ++ compile_expr address 
     ++ popq rdi ++ popq rsi ++ movq (reg rsi) (ind rdi)
     | _ -> failwith "anomaly"
@@ -176,8 +176,11 @@ and compile_bloc = function
   | [] -> nop
   | di :: bq -> begin match di with
     | ADecl_var(_, _, None) -> nop
-    | ADecl_var (_, ofs_x, Some e) -> compile_expr e ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
-    | ADecl_fct (_, f, pl, bf) -> label f ++ compile_bloc bf (* Comment gérer les paramètres ? *)
+    | ADecl_var (_, ofs_x, Some e) -> compile_expr e ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rsp)
+    | ADecl_fct (frame_size, f, pl, bf) -> label f ++ 
+    pushq (reg rbp) ++ movq (reg rsp) (reg rbp) ++ 
+    subq (imm frame_size) (reg rsp) ++ compile_bloc bf ++
+    movq (reg rbp) (reg rsp) ++ popq rbp
     | ADecl_instr i -> compile_instr i
     end ++ compile_bloc bq
 

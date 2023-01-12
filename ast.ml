@@ -91,7 +91,7 @@ and adecl_instr =
   | ADecl_var of adecl_var 
   | ADecl_fct of adecl_fct
   | ADecl_instr of ainstruction
-and adecl_fct = ctype * ident * param list * abloc
+and adecl_fct = shift * ident * param list * abloc
 and abloc = adecl_instr list
 
 type afichier = include_ list * adecl_fct list
