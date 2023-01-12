@@ -94,7 +94,7 @@ let rec compile_expr = function
   | Aint i -> pushq (imm i)
   | ATrue -> pushq (imm 1) | AFalse -> pushq (imm 0)
   | ANull -> nop 
-  | Avar ofs_x -> pushq (ind ~ofs:ofs_x rsp)
+  | Avar ofs_x -> movq (ind ~ofs:ofs_x rsp) (reg rdi) ++ pushq (reg rdi)
   | Apointer e -> compile_expr e ++ popq rdi ++ pushq (ind rdi)
   | Aaddress e -> begin match e with
     | Avar ofs_x -> leaq (ind ~ofs:ofs_x rsp) rdi ++ pushq (reg rdi)
@@ -135,8 +135,9 @@ let rec compile_expr = function
     else call f ++ addq (imm (8 * List.length ael)) (reg rsp)
   | Aassign (ea1, ea2) -> begin match ea1 with
     | Avar ofs_x -> compile_expr ea2 ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rsp)
-    | Apointer address -> compile_expr ea2 ++ compile_expr address 
-    ++ popq rdi ++ popq rsi ++ movq (reg rsi) (ind rdi)
+    | Apointer address -> 
+      compile_expr ea2 ++ compile_expr address ++
+      popq rdi ++ popq rsi ++ movq (reg rsi) (ind rdi)
     | _ -> failwith "anomaly"
   end
   | Ainc1 e -> compile_expr e ++ compile_expr (Aassign (e, Abinop(Badd, e, Aint 1)))
