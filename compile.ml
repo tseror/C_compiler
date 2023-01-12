@@ -108,12 +108,12 @@ let rec compile_expr = function
     | Bmul -> imulq (reg rbx) (reg rax)
     | Bdiv -> cqto ++ idivq !%rbx
     | Bmod -> cqto ++ idivq !%rbx ++ movq (reg rbx) (reg rax)
-    | Beqq -> cmpq (reg rbx) (reg rax) ++ sete (reg rax)
-    | Bneq -> cmpq (reg rbx) (reg rax) ++ setne (reg rax)
-    | Blt -> cmpq (reg rbx) (reg rax) ++ setl (reg rax)
-    | Ble -> cmpq (reg rbx) (reg rax) ++ setle (reg rax)
-    | Bgt -> cmpq (reg rbx) (reg rax) ++ setg (reg rax)
-    | Bge -> cmpq (reg rbx) (reg rax) ++ setge (reg rax)
+    | Beqq -> cmpq (reg rbx) (reg rax) ++ sete (reg al)
+    | Bneq -> cmpq (reg rbx) (reg rax) ++ setne (reg al)
+    | Blt -> cmpq (reg rbx) (reg rax) ++ setl (reg al)
+    | Ble -> cmpq (reg rbx) (reg rax) ++ setle (reg al)
+    | Bgt -> cmpq (reg rbx) (reg rax) ++ setg (reg al)
+    | Bge -> cmpq (reg rbx) (reg rax) ++ setge (reg al)
     | Band -> let lfalse = get_new_label() in
       cmpq (imm 0) (reg rax) ++ movq (imm 0) (reg rax) ++ je lfalse 
       ++ cmpq (imm 0) (reg rbx) ++ je lfalse
