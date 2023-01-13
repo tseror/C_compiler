@@ -181,12 +181,14 @@ let rec compile_instr = function
         label body_for ++ compile_instr i ++ 
         List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++ 
         jmp body_for
-      | Some e -> let test_for = get_new_label() in
-        current_loop := (test_for, end_for);
+      | Some e -> let test_for = get_new_label() in let exec_for = get_new_label() in
+        current_loop := (exec_for, end_for);
         jmp test_for ++ label body_for ++ 
         compile_instr i ++ 
+        label exec_for ++
         List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++
-        label test_for ++  compile_expr e ++ popq rdi ++ 
+        label test_for ++ 
+        compile_expr e ++ popq rdi ++ 
         cmpq (imm 0) (reg rdi) ++ jne body_for ++ label end_for
     end
   | ABreak -> jmp (snd !current_loop)
