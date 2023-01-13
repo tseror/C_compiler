@@ -133,7 +133,7 @@ let rec compile_expr = function
     if f = "putchar" || f = "malloc" then 
       popq rdi ++ movq (reg rsp) (reg rbx) ++ andq (imm (-16)) (reg rsp)
       ++ call f ++ movq (reg rbx) (reg rsp) ++ if f = "malloc" then pushq (reg rax) else nop
-    else call f ++ addq (imm (8 * List.length ael)) (reg rsp)
+    else call f ++ popn (List.length ael)
   | Aassign (ea1, ea2) -> begin match ea1 with
     | Avar ofs_x -> compile_expr ea2 ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
     | Apointer address -> 
@@ -203,7 +203,7 @@ and compile_bloc = function
     | ADecl_fct (frame_size, f, pl, bf) -> label f ++ 
     pushq (reg rbp) ++ movq (reg rsp) (reg rbp) ++ 
     subq (imm frame_size) (reg rsp) ++ compile_bloc bf ++
-    movq (reg rbp) (reg rsp) ++ popq rbp
+    movq (reg rbp) (reg rsp) ++ popq rbp ++ ret
     | ADecl_instr i -> compile_instr i
     end ++ compile_bloc bq
 
