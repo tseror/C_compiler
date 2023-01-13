@@ -193,8 +193,11 @@ let rec compile_instr = function
     end ++ label end_for
   | ABreak -> jmp (snd !current_loop)
   | AContinue -> jmp (fst !current_loop)
-  | AReturn None -> ret
-  | AReturn Some e -> compile_expr e ++ popq rax ++ ret
+  | AReturn None -> movq (reg rbp) (reg rsp) ++ popq rbp ++ ret
+  | AReturn Some e -> 
+    compile_expr e ++ popq rax ++ 
+    movq (reg rbp) (reg rsp) ++ popq rbp ++ 
+    pushq (reg rax) ++ ret
 and compile_bloc = function
   | [] -> nop
   | di :: bq -> begin match di with
