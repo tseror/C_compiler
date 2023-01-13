@@ -153,9 +153,9 @@ let rec compile_instr = function
   | AWhile (e, i) -> let body_while = get_new_label() in let test_while = get_new_label() in let end_while = get_new_label() in
     current_loop := (test_while, end_while);
     jmp test_while ++ label body_while ++ compile_instr i ++ 
-    label test_while ++ compile_expr e ++ popq rdi ++ cmpq (reg rdi) (imm 0) ++ jne body_while ++ label end_while
+    label test_while ++ compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ jne body_while ++ label end_while
   | AIf (e, i1, i2) -> let l_if = get_new_label() in let l_else = get_new_label() in let l_endif = get_new_label() in
-    compile_expr e ++ popq rdi ++ cmpq (reg rdi) (imm 0) ++ je l_else ++
+    compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ je l_else ++
     label l_else ++ compile_instr i2 ++ jmp l_endif ++
     label l_if ++ compile_instr i1
   | AFor (_, eo, el, i) -> let body_for = get_new_label() in let end_for = get_new_label() in
@@ -168,7 +168,7 @@ let rec compile_instr = function
       jmp test_for ++ label body_for ++ 
       List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++
       compile_instr i ++ label test_for ++ 
-      compile_expr e ++ popq rdi ++ cmpq (reg rdi) (imm 0) ++ jne body_for ++ label end_for
+      compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ jne body_for ++ label end_for
     end
   | ABreak -> label (snd !current_loop)
   | AContinue -> label (fst !current_loop)
