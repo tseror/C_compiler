@@ -4,9 +4,9 @@
 #include <stdio.h>
 
 int main() {
-  bool *p = malloc(2 * sizeof(bool));
-  p[0] = true;
-  p[1] = false;
-  putchar('A' + *p++);
-  putchar('A' + *p++);
+  for (int n = 65; n < 91; n++) {
+    putchar(n);
+    if (n % 2 == 0) continue;
+  }
+  putchar(10);
 }
