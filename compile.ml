@@ -154,10 +154,11 @@ let rec compile_instr = function
     current_loop := (test_while, end_while);
     jmp test_while ++ label body_while ++ compile_instr i ++ 
     label test_while ++ compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ jne body_while ++ label end_while
-  | AIf (e, i1, i2) -> let l_if = get_new_label() in let l_else = get_new_label() in let l_endif = get_new_label() in
+  | AIf (e, i1, i2) -> let l_else = get_new_label() in let l_endif = get_new_label() in
     compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ je l_else ++
-    label l_else ++ compile_instr i2 ++ jmp l_endif ++
-    label l_if ++ compile_instr i1
+    compile_instr i1 ++ jmp l_endif ++
+    label l_else ++ compile_instr i2 ++
+    label l_endif
   | AFor (_, eo, el, i) -> let body_for = get_new_label() in let end_for = get_new_label() in
     begin match eo with
       | None -> current_loop := (body_for, end_for);      
