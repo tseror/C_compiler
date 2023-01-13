@@ -178,17 +178,17 @@ let rec compile_instr = function
   | AFor (_, eo, el, i) -> let body_for = get_new_label() in let end_for = get_new_label() in
     begin match eo with
       | None -> current_loop := (body_for, end_for);      
-      label body_for ++ List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++ 
-      compile_instr i ++ jmp body_for
+        label body_for ++ List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++ 
+        compile_instr i ++ jmp body_for
       | Some e -> let test_for = get_new_label() in
-      current_loop := (test_for, end_for);
-      jmp test_for ++ label body_for ++ 
-      List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++
-      compile_instr i ++ label test_for ++ 
-      compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ jne body_for ++ label end_for
+        current_loop := (test_for, end_for);
+        jmp test_for ++ label body_for ++ 
+        List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++
+        compile_instr i ++ label test_for ++ 
+        compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ jne body_for ++ label end_for
     end
-  | ABreak -> label (snd !current_loop)
-  | AContinue -> label (fst !current_loop)
+  | ABreak -> jmp (snd !current_loop)
+  | AContinue -> jmp (fst !current_loop)
   | AReturn None -> ret
   | AReturn Some e -> compile_expr e ++ popq rax ++ ret
 and compile_bloc = function
