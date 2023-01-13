@@ -102,26 +102,26 @@ let rec compile_expr = function
     | Apointer p -> compile_expr p
     | _ -> failwith "anomaly"
   end
-  | Abinop (b, e1, e2) -> compile_expr e1 ++ compile_expr e2 ++ popq rbx ++ popq rax ++
+  | Abinop (b, e1, e2) -> compile_expr e1 ++ compile_expr e2 ++ popq rcx ++ popq rax ++
   (match b with
-    | Badd -> addq (reg rbx) (reg rax)
-    | Bsub -> subq (reg rbx) (reg rax)
-    | Bmul -> imulq (reg rbx) (reg rax)
-    | Bdiv -> cqto ++ idivq !%rbx
-    | Bmod -> cqto ++ idivq !%rbx ++ movq (reg rdx) (reg rax)
-    | Beqq -> cmpq (reg rbx) (reg rax) ++ sete (reg al)
-    | Bneq -> cmpq (reg rbx) (reg rax) ++ setne (reg al)
-    | Blt -> cmpq (reg rbx) (reg rax) ++ setl (reg al)
-    | Ble -> cmpq (reg rbx) (reg rax) ++ setle (reg al)
-    | Bgt -> cmpq (reg rbx) (reg rax) ++ setg (reg al)
-    | Bge -> cmpq (reg rbx) (reg rax) ++ setge (reg al)
+    | Badd -> addq (reg rcx) (reg rax)
+    | Bsub -> subq (reg rcx) (reg rax)
+    | Bmul -> imulq (reg rcx) (reg rax)
+    | Bdiv -> cqto ++ idivq !%rcx
+    | Bmod -> cqto ++ idivq !%rcx ++ movq (reg rdx) (reg rax)
+    | Beqq -> cmpq (reg rcx) (reg rax) ++ sete (reg al)
+    | Bneq -> cmpq (reg rcx) (reg rax) ++ setne (reg al)
+    | Blt -> cmpq (reg rcx) (reg rax) ++ setl (reg al)
+    | Ble -> cmpq (reg rcx) (reg rax) ++ setle (reg al)
+    | Bgt -> cmpq (reg rcx) (reg rax) ++ setg (reg al)
+    | Bge -> cmpq (reg rcx) (reg rax) ++ setge (reg al)
     | Band -> let lfalse = get_new_label() in
       cmpq (imm 0) (reg rax) ++ movq (imm 0) (reg rax) ++ je lfalse 
-      ++ cmpq (imm 0) (reg rbx) ++ je lfalse
+      ++ cmpq (imm 0) (reg rcx) ++ je lfalse
       ++ movq (imm 1) (reg rax) ++ label lfalse
     | Bor -> let ltrue = get_new_label() in
       cmpq (imm 0) (reg rax) ++ movq (imm 1) (reg rax) ++ jne ltrue 
-      ++ cmpq (imm 0) (reg rbx) ++ jne ltrue
+      ++ cmpq (imm 0) (reg rcx) ++ jne ltrue
       ++ movq (imm 0) (reg rax) ++ label ltrue) 
     ++ pushq (reg rax)
   | Anot e -> compile_expr e ++ popq rax ++ notq (reg rax) ++ pushq (reg rax) 
