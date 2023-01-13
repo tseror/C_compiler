@@ -66,12 +66,13 @@ let rec alloc_instr (env: local_env) (fpcur:int) = function
 and alloc_bloc (env: local_env) (fpcur:int) = function
     | [] -> [], fpcur
     | di :: bq -> match di with
-      | Decl_var {desc_dv=(t, x, eo); loc=loc} -> begin match eo with
+      | Decl_var {desc_dv=(ty, x, eo); loc=loc} ->
+        begin match eo with
         | Some e -> let ae = alloc_expr env e in 
           let abq, fpbq = alloc_bloc (Smap.add x (-(fpcur+8)) env) (fpcur+8) bq in 
-          ADecl_var(t, -(fpcur+8), Some ae) :: abq, fpbq
+          ADecl_var(ty, -(fpcur+8), Some ae) :: abq, fpbq
         | None -> let abq, fpbq = alloc_bloc (Smap.add x (-(fpcur+8)) env) (fpcur+8) bq in 
-          ADecl_var(t, -(fpcur+8), None) :: abq, fpbq
+          ADecl_var(ty, -(fpcur+8), None) :: abq, fpbq
         end
       | Decl_fct {desc_df=(t, f, pl, bf); loc=loc} ->
         let env', fpnew =
@@ -131,7 +132,7 @@ let rec compile_expr = function
     List.fold_left (fun acc e -> compile_expr e ++ acc) nop ael ++
     if f = "putchar" || f = "malloc" then 
       popq rdi ++ movq (reg rsp) (reg rbx) ++ andq (imm (-16)) (reg rsp)
-      ++ call f ++ movq (reg rbx) (reg rsp)
+      ++ call f ++ movq (reg rbx) (reg rsp) ++ if f = "malloc" then pushq (reg rax) else nop
     else call f ++ addq (imm (8 * List.length ael)) (reg rsp)
   | Aassign (ea1, ea2) -> begin match ea1 with
     | Avar ofs_x -> compile_expr ea2 ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
@@ -177,7 +178,7 @@ and compile_bloc = function
   | [] -> nop
   | di :: bq -> begin match di with
     | ADecl_var(_, _, None) -> nop
-    | ADecl_var (_, ofs_x, Some e) -> compile_expr e ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
+    | ADecl_var (ty, ofs_x, Some e) -> compile_expr e ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
     | ADecl_fct (frame_size, f, pl, bf) -> label f ++ 
     pushq (reg rbp) ++ movq (reg rsp) (reg rbp) ++ 
     subq (imm frame_size) (reg rsp) ++ compile_bloc bf ++
