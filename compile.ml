@@ -78,7 +78,7 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
         let env', fpnew =
         List.fold_left
           (fun (env', fpnew) p ->
-            let fpnew = fpnew + 8 in Smap.add (snd p) fpnew env', fpnew)
+            let fpnew = fpnew + 8 in Smap.add (snd p) (fpnew+8) env', fpnew)
           (env, fpcur) pl in
         let abf, fpbf = alloc_bloc env' fpnew bf in
         let abq, fpbq = alloc_bloc env fpcur bq in 

@@ -9,5 +9,4 @@ void f(int x) {
 
 int main() {
   f('A');
-  putchar(10);
 }
