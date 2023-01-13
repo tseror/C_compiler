@@ -3,10 +3,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int f(int x, int y) {
-  return x+y;
+int f(int x) {
+  return x;
 }
 
 int main() {
-  putchar(f('A', 2));
+    putchar('A');
 }
