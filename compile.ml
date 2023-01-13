@@ -189,8 +189,8 @@ let rec compile_instr = function
         List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++
         label test_for ++ 
         compile_expr e ++ popq rdi ++ 
-        cmpq (imm 0) (reg rdi) ++ jne body_for ++ label end_for
-    end
+        cmpq (imm 0) (reg rdi) ++ jne body_for 
+    end ++ label end_for
   | ABreak -> jmp (snd !current_loop)
   | AContinue -> jmp (fst !current_loop)
   | AReturn None -> ret
