@@ -3,11 +3,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+void f(int x) {
+  putchar(x);
+}
+
 int main() {
-  for (;;) {
-    break;
-    putchar('A');
-  }
-  putchar('B');
+  f('A');
   putchar(10);
 }
