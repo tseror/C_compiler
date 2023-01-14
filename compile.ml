@@ -206,7 +206,6 @@ and compile_bloc = function
     | ADecl_fct (frame_size, f, pl, bf) -> label f ++ 
     pushq (reg rbp) ++ movq (reg rsp) (reg rbp) ++ 
     subq (imm frame_size) (reg rsp) ++ compile_bloc bf ++
-    movq (reg rax) (reg rdi) ++
     movq (reg rbp) (reg rsp) ++ popq rbp ++ ret
     | ADecl_instr i -> compile_instr i
     end ++ compile_bloc bq
