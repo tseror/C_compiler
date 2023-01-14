@@ -10,7 +10,7 @@ void print2(int n) {
 
 int main() {
   for (int i = 0; i < 10; i++) {
-    /* if (i == 0) continue; */
+    if (i == 0) continue;
     putchar('|');
     for (int j = 0; j < 10; j++) {
       if (j == 0) continue;
