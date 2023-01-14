@@ -142,26 +142,26 @@ let rec compile_expr = function
       compile_expr address ++ movq (reg rsi) (ind rdi)
     | _ -> failwith "anomaly"
   end
-  | Ainc1 e -> compile_expr e ++ pushq (reg rdi) ++
-    begin match e with
-    | Apointer p -> compile_expr (Aassign (p, Abinop(Badd, p, Aint 8)))
-    | _ -> compile_expr (Aassign (e, Abinop(Badd, e, Aint 1)))
-    end ++ popq rdi
-  | Adec1 e -> compile_expr e ++ pushq (reg rdi) ++
-    begin match e with
-    | Apointer p -> compile_expr (Aassign (p, Abinop(Bsub, p, Aint 8)))
-    | _ -> compile_expr (Aassign (e, Abinop(Bsub, e, Aint 1)))
-    end ++ popq rdi
-  | Ainc2 e -> 
+  | Ainc1 e -> 
     begin match e with
     | Apointer p -> compile_expr (Aassign (p, Abinop(Badd, p, Aint 8)))
     | _ -> compile_expr (Aassign (e, Abinop(Badd, e, Aint 1)))
     end  ++ compile_expr e
-  | Adec2 e ->     
+  | Adec1 e ->     
     begin match e with
     | Apointer p -> compile_expr (Aassign (p, Abinop(Bsub, p, Aint 8)))
     | _ -> compile_expr (Aassign (e, Abinop(Bsub, e, Aint 1)))
   end ++ compile_expr e
+  | Ainc2 e -> compile_expr e ++ pushq (reg rdi) ++
+    begin match e with
+    | Apointer p -> compile_expr (Aassign (p, Abinop(Badd, p, Aint 8)))
+    | _ -> compile_expr (Aassign (e, Abinop(Badd, e, Aint 1)))
+    end ++ popq rdi
+  | Adec2 e -> compile_expr e ++ pushq (reg rdi) ++
+    begin match e with
+    | Apointer p -> compile_expr (Aassign (p, Abinop(Bsub, p, Aint 8)))
+    | _ -> compile_expr (Aassign (e, Abinop(Bsub, e, Aint 1)))
+    end ++ popq rdi
 
 let rec compile_instr = function
   | ANone -> nop
