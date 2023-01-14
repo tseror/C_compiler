@@ -131,10 +131,11 @@ let rec compile_expr = function
   | Asizeof t -> movq (imm 8) (reg rdi)
   | Acall (f, ael) ->
     List.fold_left (fun acc e -> compile_expr e ++ pushq (reg rdi) ++ acc) nop ael ++
+    begin
     if f = "putchar" || f = "malloc" then 
       popq rdi ++ movq (reg rsp) (reg rbx) ++ andq (imm (-16)) (reg rsp)
       ++ call f ++ movq (reg rbx) (reg rsp) 
-    else call f ++ popn (8*(List.length ael))
+    else call f ++ popn (8*(List.length ael)) end
     ++ movq (reg rax) (reg rdi)
   | Aassign (ea1, ea2) -> begin match ea1 with
     | Avar ofs_x -> compile_expr ea2 ++ movq (reg rdi) (ind ~ofs:ofs_x rbp)
