@@ -3,9 +3,19 @@
 {
   open Lexing
   open Parser
+  open Format
 
   (* exception à lever pour signaler une erreur lexicale *)
   exception Lexing_error of string
+
+  let char_to_code s = 
+    let char_of = function
+    | "'\\n'"    -> '\n'
+    | "'\\t'"    -> '\t'
+    | "'\\\\'"   -> '\\'
+    | "'\\\''"   -> '\''
+    | _         -> s.[1]
+  in int_of_char (char_of s)
 
 }
 
@@ -13,7 +23,7 @@ let chiffre = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let ident = (alpha | '_') (alpha | chiffre | '_')*
 let carac = [^'\\' '\''] | "\\t" | "\\n" | "\\\\" | "\\\'"
-let integer = '0' | (['1'-'9'] chiffre*) | ('\'' carac '\'')
+let integer = '0' | (['1'-'9'] chiffre*) | '\'' carac '\''
 let space = ' ' | '\t'
 let comment = "//" [^'\n']* 
 
@@ -22,7 +32,7 @@ rule token = parse
     | space+ {token lexbuf}
     | comment {token lexbuf}
     | space {token lexbuf}
-    | integer as x {INTEGER(try int_of_string x with _ -> Char.code x.[1])}
+    | integer as x {INTEGER(try int_of_string x with _ -> char_to_code x)}
     | "#include" space* "<" ([^ '>']* as package) ">" space* "\n" {Lexing.new_line lexbuf; INCLUDE(package)}
     | "/*" {multiline_comment lexbuf}
     | "bool" {BOOL}
