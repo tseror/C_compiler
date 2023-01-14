@@ -92,17 +92,17 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
 let popn n = addq (imm n) !%rsp
 let pushn n = subq (imm n) !%rsp
 let rec compile_expr = function
-  | Aint i -> pushq (imm i)
-  | ATrue -> pushq (imm 1) | AFalse -> pushq (imm 0)
-  | ANull -> pushq (imm 0)
-  | Avar ofs_x -> movq (ind ~ofs:ofs_x rbp) (reg rdi) ++ pushq (reg rdi)
-  | Apointer e -> compile_expr e ++ popq rdi ++ pushq (ind rdi)
+  | Aint i -> movq (imm i) (reg rdi)
+  | ATrue -> movq (imm 1) (reg rdi) | AFalse -> movq (imm 0) (reg rdi)
+  | ANull -> movq (imm 0) (reg rdi)
+  | Avar ofs_x -> movq (ind ~ofs:ofs_x rbp) (reg rdi)
+  | Apointer e -> compile_expr e ++ movq (ind rdi) (reg rdi)
   | Aaddress e -> begin match e with
-    | Avar ofs_x -> leaq (ind ~ofs:ofs_x rbp) rdi ++ pushq (reg rdi)
+    | Avar ofs_x -> leaq (ind ~ofs:ofs_x rbp) rdi
     | Apointer p -> compile_expr p
     | _ -> failwith "anomaly"
   end
-  | Abinop (b, e1, e2) -> compile_expr e1 ++ compile_expr e2 ++ popq rcx ++ popq rax ++
+  | Abinop (b, e1, e2) -> compile_expr e1 ++ movq (reg rdi) (reg rax) ++ compile_expr e2 ++ movq (reg rdi) (reg rcx) ++
   (match b with
     | Badd -> addq (reg rcx) (reg rax)
     | Bsub -> subq (reg rcx) (reg rax)
@@ -123,34 +123,34 @@ let rec compile_expr = function
       cmpq (imm 0) (reg rax) ++ movq (imm 1) (reg rax) ++ jne ltrue 
       ++ cmpq (imm 0) (reg rcx) ++ jne ltrue
       ++ movq (imm 0) (reg rax) ++ label ltrue) 
-    ++ pushq (reg rax)
-  | Anot e -> compile_expr e ++ popq rax ++ notq (reg rax) ++ pushq (reg rax) 
-  | Aneg e -> compile_expr e ++ popq rax ++ negq (reg rax) ++ pushq (reg rax)
+    ++ movq (reg rax) (reg rdi)
+  | Anot e -> compile_expr e ++ notq (reg rdi) 
+  | Aneg e -> compile_expr e ++ negq (reg rdi)
   | Aplus e -> compile_expr e
-  | Asizeof t -> pushq (imm 8)
+  | Asizeof t -> movq (imm 8) (reg rdi)
   | Acall (f, ael) ->
-    List.fold_left (fun acc e -> compile_expr e ++ acc) nop ael ++
+    List.fold_left (fun acc e -> compile_expr e ++ pushq (reg rdi) ++ acc) nop ael ++
     if f = "putchar" || f = "malloc" then 
       popq rdi ++ movq (reg rsp) (reg rbx) ++ andq (imm (-16)) (reg rsp)
-      ++ call f ++ movq (reg rbx) (reg rsp) ++ if f = "malloc" then pushq (reg rax) else nop
+      ++ call f ++ movq (reg rbx) (reg rsp)
     else call f ++ popn (8*(List.length ael))
   | Aassign (ea1, ea2) -> begin match ea1 with
-    | Avar ofs_x -> compile_expr ea2 ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
+    | Avar ofs_x -> compile_expr ea2 ++ movq (reg rdi) (ind ~ofs:ofs_x rbp)
     | Apointer address -> 
-      compile_expr ea2 ++ compile_expr address ++
-      popq rdi ++ popq rsi ++ movq (reg rsi) (ind rdi)
+      compile_expr ea2 ++ movq (reg rdi) (reg rsi) ++ 
+      compile_expr address ++ movq (reg rsi) (ind rdi)
     | _ -> failwith "anomaly"
   end
-  | Ainc1 e -> compile_expr e ++ 
+  | Ainc1 e -> compile_expr e ++ pushq (reg rdi) ++
     begin match e with
     | Apointer p -> compile_expr (Aassign (p, Abinop(Badd, p, Aint 8)))
     | _ -> compile_expr (Aassign (e, Abinop(Badd, e, Aint 1)))
-    end
-  | Adec1 e -> compile_expr e ++ 
+    end ++ popq rdi
+  | Adec1 e -> compile_expr e ++ pushq (reg rdi) ++
     begin match e with
     | Apointer p -> compile_expr (Aassign (p, Abinop(Bsub, p, Aint 8)))
     | _ -> compile_expr (Aassign (e, Abinop(Bsub, e, Aint 1)))
-    end
+    end ++ popq rdi
   | Ainc2 e -> 
     begin match e with
     | Apointer p -> compile_expr (Aassign (p, Abinop(Badd, p, Aint 8)))
@@ -169,9 +169,9 @@ let rec compile_instr = function
   | AWhile (e, i) -> let body_while = get_new_label() in let test_while = get_new_label() in let end_while = get_new_label() in
     current_loop := (test_while, end_while);
     jmp test_while ++ label body_while ++ compile_instr i ++ 
-    label test_while ++ compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ jne body_while ++ label end_while
+    label test_while ++ compile_expr e ++ cmpq (imm 0) (reg rdi) ++ jne body_while ++ label end_while
   | AIf (e, i1, i2) -> let l_else = get_new_label() in let l_endif = get_new_label() in
-    compile_expr e ++ popq rdi ++ cmpq (imm 0) (reg rdi) ++ je l_else ++
+    compile_expr e ++ cmpq (imm 0) (reg rdi) ++ je l_else ++
     compile_instr i1 ++ jmp l_endif ++
     label l_else ++ compile_instr i2 ++
     label l_endif
@@ -188,24 +188,25 @@ let rec compile_instr = function
         label exec_for ++
         List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++
         label test_for ++ 
-        compile_expr e ++ popq rdi ++ 
+        compile_expr e ++
         cmpq (imm 0) (reg rdi) ++ jne body_for 
     end ++ label end_for
   | ABreak -> jmp (snd !current_loop)
   | AContinue -> jmp (fst !current_loop)
   | AReturn None -> movq (reg rbp) (reg rsp) ++ popq rbp ++ ret
   | AReturn Some e -> 
-    compile_expr e ++ popq rax ++ 
+    compile_expr e ++ movq (reg rdi) (reg rax) ++ 
     movq (reg rbp) (reg rsp) ++ 
     popq rbp ++ ret
 and compile_bloc = function
   | [] -> nop
   | di :: bq -> begin match di with
     | ADecl_var(_, _, None) -> nop
-    | ADecl_var (ty, ofs_x, Some e) -> compile_expr e ++ popq rsi ++ movq (reg rsi) (ind ~ofs:ofs_x rbp)
+    | ADecl_var (ty, ofs_x, Some e) -> compile_expr e ++ movq (reg rdi) (ind ~ofs:ofs_x rbp)
     | ADecl_fct (frame_size, f, pl, bf) -> label f ++ 
     pushq (reg rbp) ++ movq (reg rsp) (reg rbp) ++ 
     subq (imm frame_size) (reg rsp) ++ compile_bloc bf ++
+    movq (reg rax) (reg rdi) ++
     movq (reg rbp) (reg rsp) ++ popq rbp ++ ret
     | ADecl_instr i -> compile_instr i
     end ++ compile_bloc bq
