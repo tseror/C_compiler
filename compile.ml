@@ -196,8 +196,8 @@ let rec compile_instr = function
   | AReturn None -> movq (reg rbp) (reg rsp) ++ popq rbp ++ ret
   | AReturn Some e -> 
     compile_expr e ++ popq rax ++ 
-    movq (reg rbp) (reg rsp) ++ popq rbp ++ 
-    pushq (reg rax) ++ ret
+    movq (reg rbp) (reg rsp) ++ 
+    popq rbp ++ ret
 and compile_bloc = function
   | [] -> nop
   | di :: bq -> begin match di with
