@@ -102,7 +102,9 @@ let rec compile_expr = function
     | Apointer p -> compile_expr p
     | _ -> failwith "anomaly"
   end
-  | Abinop (b, e1, e2) -> compile_expr e1 ++ movq (reg rdi) (reg rax) ++ compile_expr e2 ++ movq (reg rdi) (reg rcx) ++
+  | Abinop (b, e1, e2) -> compile_expr e1 ++ pushq (reg rdi) ++ 
+                          compile_expr e2 ++ pushq (reg rdi) ++ 
+                          popq rcx ++ popq rax ++
   (match b with
     | Badd -> addq (reg rcx) (reg rax)
     | Bsub -> subq (reg rcx) (reg rax)
