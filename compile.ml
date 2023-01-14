@@ -75,12 +75,12 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
           ADecl_var(ty, -(fpcur+8), None) :: abq, fpbq
         end
       | Decl_fct {desc_df=(t, f, pl, bf); loc=loc} ->
-        let env', fpnew =
+        let env', ofs_p =
         List.fold_left
-          (fun (env', fpnew) p ->
-            let fpnew = fpnew + 8 in Smap.add (snd p) (fpnew+8) env', fpnew)
-          (env, fpcur) pl in
-        let abf, fpbf = alloc_bloc env' fpnew bf in
+          (fun (env', ofs_p) p ->
+            let ofs_p = ofs_p + 8 in Smap.add (snd p) ofs_p env', ofs_p)
+          (env, 16) pl in (* changement: 8 au lieu de fpcur *)
+        let abf, fpbf = alloc_bloc env' fpcur bf in
         let abq, fpbq = alloc_bloc env fpcur bq in 
         ADecl_fct (fpbf, f, pl, abf) :: abq, fpbq
       | Decl_instr i -> let ai, fpi = alloc_instr env fpcur i in
