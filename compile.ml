@@ -125,7 +125,7 @@ let rec compile_expr = function
       ++ cmpq (imm 0) (reg rcx) ++ jne ltrue
       ++ movq (imm 0) (reg rax) ++ label ltrue) 
     ++ movq (reg rax) (reg rdi)
-  | Anot e -> compile_expr e ++ cmpq (imm 0) (reg rdi) ++ movq (imm 0) (reg rdi) ++ setne (reg dil)
+  | Anot e -> compile_expr e ++ cmpq (imm 0) (reg rdi) ++ movq (imm 0) (reg rdi) ++ sete (reg dil)
   | Aneg e -> compile_expr e ++ negq (reg rdi)
   | Aplus e -> compile_expr e
   | Asizeof t -> movq (imm 8) (reg rdi)
