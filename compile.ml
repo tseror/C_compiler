@@ -164,55 +164,55 @@ let rec compile_expr = function
     | _ -> compile_expr (Aassign (e, Abinop(Bsub, e, Aint 1)))
     end ++ popq rdi
 
-let rec compile_instr ?(current_loop = ("","")) = function
+let rec compile_instr ?(cl = ("","")) = function
   | ANone -> nop
   | AExpr e -> compile_expr e
-  | ABloc b -> compile_bloc b
+  | ABloc b -> compile_bloc ~cl:cl b
   | AWhile (e, i) -> let body_while = get_new_label() in let test_while = get_new_label() in let end_while = get_new_label() in
-    let current_loop = (test_while, end_while) in
-    jmp test_while ++ label body_while ++ compile_instr ~current_loop:current_loop i ++ 
+    let cl = (test_while, end_while) in
+    jmp test_while ++ label body_while ++ compile_instr ~cl:cl i ++ 
     label test_while ++ compile_expr e ++ cmpq (imm 0) (reg rdi) ++ jne body_while ++ label end_while
   | AIf (e, i1, i2) -> let l_else = get_new_label() in let l_endif = get_new_label() in
     compile_expr e ++ cmpq (imm 0) (reg rdi) ++ je l_else ++
-    compile_instr i1 ++ jmp l_endif ++
-    label l_else ++ compile_instr i2 ++
+    compile_instr ~cl:cl i1 ++ jmp l_endif ++
+    label l_else ++ compile_instr ~cl:cl i2 ++
     label l_endif
   | AFor (_, eo, el, i) -> let body_for = get_new_label() in let end_for = get_new_label() in
     begin match eo with
-      | None -> let current_loop = (body_for, end_for) in   
-        label body_for ++ compile_instr ~current_loop:current_loop i ++ 
+      | None -> let cl = (body_for, end_for) in   
+        label body_for ++ compile_instr ~cl:cl i ++ 
         List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++ 
         jmp body_for
       | Some e -> let test_for = get_new_label() in let exec_for = get_new_label() in
-        let current_loop = (exec_for, end_for) in
+        let cl = (exec_for, end_for) in
         jmp test_for ++ label body_for ++ 
-        compile_instr ~current_loop:current_loop i ++ 
+        compile_instr ~cl:cl i ++ 
         label exec_for ++
         List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++
         label test_for ++ 
         compile_expr e ++
         cmpq (imm 0) (reg rdi) ++ jne body_for 
     end ++ label end_for
-  | ABreak -> jmp (snd current_loop)
-  | AContinue -> jmp (fst current_loop)
+  | ABreak -> jmp (snd cl)
+  | AContinue -> jmp (fst cl)
   | AReturn None -> movq (reg rbp) (reg rsp) ++ popq rbp ++ ret
   | AReturn Some e -> 
     compile_expr e ++ movq (reg rdi) (reg rax) ++ 
     movq (reg rbp) (reg rsp) ++ 
     popq rbp ++ ret
-and compile_bloc = function
+and compile_bloc ?(cl = ("","")) = function
   | [] -> nop
   | di :: bq -> begin match di with
     | ADecl_var(_, _, None) -> nop
     | ADecl_var (ty, ofs_x, Some e) -> compile_expr e ++ movq (reg rdi) (ind ~ofs:ofs_x rbp)
     | ADecl_fct (frame_size, f, pl, bf) -> label f ++ 
     pushq (reg rbp) ++ movq (reg rsp) (reg rbp) ++ 
-    subq (imm frame_size) (reg rsp) ++ compile_bloc bf ++
+    subq (imm frame_size) (reg rsp) ++ compile_bloc ~cl:("","") bf ++
     movq (reg rbp) (reg rsp) ++ popq rbp ++ ret
-    | ADecl_instr i -> compile_instr i
-    end ++ compile_bloc bq
+    | ADecl_instr i -> compile_instr ~cl:cl i
+    end ++ compile_bloc ~cl:cl bq
 
 let rec main (f:fichier) : X86_64.text = 
   let _, decl_fcts = f in let file_bloc = (List.map (fun fct -> Decl_fct fct) decl_fcts) in
   let file_abloc, _ = alloc_bloc (Smap.empty) 0 file_bloc in
-  globl "main" ++ compile_bloc file_abloc ++ ret
+  globl "main" ++ compile_bloc ~cl:("","") file_abloc ++ ret
