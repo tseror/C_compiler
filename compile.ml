@@ -170,7 +170,7 @@ let rec compile_instr ?(current_loop = ("","")) = function
   | ABloc b -> compile_bloc b
   | AWhile (e, i) -> let body_while = get_new_label() in let test_while = get_new_label() in let end_while = get_new_label() in
     let current_loop = (test_while, end_while) in
-    jmp test_while ++ label body_while ++ compile_instr ~current_loop i ++ 
+    jmp test_while ++ label body_while ++ compile_instr ~current_loop:current_loop i ++ 
     label test_while ++ compile_expr e ++ cmpq (imm 0) (reg rdi) ++ jne body_while ++ label end_while
   | AIf (e, i1, i2) -> let l_else = get_new_label() in let l_endif = get_new_label() in
     compile_expr e ++ cmpq (imm 0) (reg rdi) ++ je l_else ++
@@ -180,13 +180,13 @@ let rec compile_instr ?(current_loop = ("","")) = function
   | AFor (_, eo, el, i) -> let body_for = get_new_label() in let end_for = get_new_label() in
     begin match eo with
       | None -> let current_loop = (body_for, end_for) in   
-        label body_for ++ compile_instr ~current_loop i ++ 
+        label body_for ++ compile_instr ~current_loop:current_loop i ++ 
         List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++ 
         jmp body_for
       | Some e -> let test_for = get_new_label() in let exec_for = get_new_label() in
         let current_loop = (exec_for, end_for) in
         jmp test_for ++ label body_for ++ 
-        compile_instr ~current_loop i ++ 
+        compile_instr ~current_loop:current_loop i ++ 
         label exec_for ++
         List.fold_left (fun acc e -> compile_expr e ++ acc) nop el ++
         label test_for ++ 
