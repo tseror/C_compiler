@@ -12,60 +12,59 @@ module Smap = Map.Make(String)
 
 type local_env = shift Smap.t
 
-let rec alloc_expr (env: local_env) (exp:expr) = match exp.desc_e with
-  | Eint i -> Aint i
+let rec alloc_expr (env: local_env) (exp:texpr) = match exp.tdesc with
+  | TEint i -> Aint i
   | True -> ATrue
   | False -> AFalse
   | Null -> ANull
-  | Eident x -> begin
+  | TEident x -> begin
     try let shift_x = Smap.find x env in Avar shift_x
     with Not_found -> raise (VarUndef x)
     end
-  | Epointer e -> Apointer (alloc_expr env e)
-  | Eassign (e1, e2) -> 
+  | TEpointer e -> Apointer (alloc_expr env e)
+  | TEassign (e1, e2) -> 
     let ae1 = alloc_expr env e1 in
     let ae2 = alloc_expr env e2 in 
     Aassign(ae1, ae2)
-  | Ecall (f, el) -> begin
+  | TEcall (f, el) -> begin
     try Acall (f, List.map (alloc_expr env) el) 
     with Not_found -> raise (VarUndef f) end
-  | Einc1 e -> Ainc1 (alloc_expr env e)
-  | Edec1 e -> Adec1 (alloc_expr env e)
-  | Einc2 e -> Ainc2 (alloc_expr env e)
-  | Edec2 e -> Adec2 (alloc_expr env e)
-  | Eaddress e -> Aaddress (alloc_expr env e)
-  | Enot e -> Anot (alloc_expr env e)
-  | Eneg e -> Aneg (alloc_expr env e)
-  | Eplus e -> Aplus (alloc_expr env e)
-  | Ebinop (b, e1, e2) -> 
+  | TEinc1 e -> Ainc1 (alloc_expr env e)
+  | TEdec1 e -> Adec1 (alloc_expr env e)
+  | TEinc2 e -> Ainc2 (alloc_expr env e)
+  | TEdec2 e -> Adec2 (alloc_expr env e)
+  | TEaddress e -> Aaddress (alloc_expr env e)
+  | TEnot e -> Anot (alloc_expr env e)
+  | TEneg e -> Aneg (alloc_expr env e)
+  | TEplus e -> Aplus (alloc_expr env e)
+  | TEbinop (b, e1, e2) -> 
     let ae1 = alloc_expr env e1 in
     let ae2 = alloc_expr env e2 in
     Abinop(b, ae1, ae2)
-  | Esizeof t -> Asizeof t
+  | TEsizeof t -> Asizeof t
 
 let rec alloc_instr (env: local_env) (fpcur:int) = function
-    | None -> ANone, 0
-    | Expr e -> let ae = alloc_expr env e in AExpr ae, 0
-    | Bloc b -> let ab, fp = alloc_bloc env fpcur b in ABloc(ab), fp
-    | Return (None, _) -> AReturn None, 0
-    | Return (Some e, _) -> let ae = alloc_expr env e in AReturn (Some ae), 0
-    | Break _ -> ABreak, 0
-    | Continue _ -> AContinue, 0
-    | If (e, i1, i2) -> let ae = alloc_expr env e in 
+    | TNone -> ANone, 0
+    | TExpr e -> let ae = alloc_expr env e in AExpr ae, 0
+    | TBloc b -> let ab, fp = alloc_bloc env fpcur b in ABloc(ab), fp
+    | TReturn None -> AReturn None, 0
+    | TReturn (Some e) -> let ae = alloc_expr env e in AReturn (Some ae), 0
+    | TBreak -> ABreak, 0
+    | TContinue -> AContinue, 0
+    | TIf (e, i1, i2) -> let ae = alloc_expr env e in 
       let ai1, fp1 = alloc_instr env fpcur i1 in let ai2, fp2 = alloc_instr env fpcur i2 in
       AIf (ae, ai1, ai2), fp1 + fp2
-    | While (e, i) -> let ae = alloc_expr env e in let ai, fpi = alloc_instr env fpcur i in
+    | TWhile (e, i) -> let ae = alloc_expr env e in let ai, fpi = alloc_instr env fpcur i in
       AWhile (ae, ai), fpi
-    | For (None, None, el, i) -> let ael = List.map (alloc_expr env) el in
-      let ai, fpi = alloc_instr env fpcur i in AFor(None, None, ael, ai), fpi
-    | For (None, Some e, el, i) -> let ae = alloc_expr env e in let ael = List.map (alloc_expr env) el in
-      let ai, fpi = alloc_instr env fpcur i in AFor(None, Some ae, ael, ai), fpi
-    | For (Some d, e, el, i) -> let ab, fpb = alloc_bloc env fpcur [Decl_var d; Decl_instr(For(None, e, el, i))] in (ABloc(ab), fpb)
+    | TFor (None, el, i) -> let ael = List.map (alloc_expr env) el in
+      let ai, fpi = alloc_instr env fpcur i in AFor(None, ael, ai), fpi
+    | TFor (Some e, el, i) -> let ae = alloc_expr env e in let ael = List.map (alloc_expr env) el in
+      let ai, fpi = alloc_instr env fpcur i in AFor(Some ae, ael, ai), fpi
 
 and alloc_bloc (env: local_env) (fpcur:int) = function
     | [] -> [], fpcur
     | di :: bq -> match di with
-      | Decl_var {desc_dv=(ty, x, eo); loc=loc} ->
+      | TDecl_var (ty, x, eo) ->
         begin match eo with
         | Some e -> let ae = alloc_expr env e in 
           let abq, fpbq = alloc_bloc (Smap.add x (-(fpcur+8)) env) (fpcur+8) bq in 
@@ -73,7 +72,7 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
         | None -> let abq, fpbq = alloc_bloc (Smap.add x (-(fpcur+8)) env) (fpcur+8) bq in 
           ADecl_var(ty, -(fpcur+8), None) :: abq, fpbq
         end
-      | Decl_fct {desc_df=(t, f, pl, bf); loc=loc} ->
+      | TDecl_fct (t, f, pl, bf) ->
         let env', ofs_p =
         List.fold_left
           (fun (env', ofs_p) p ->
@@ -82,7 +81,7 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
         let abf, fpbf = alloc_bloc env' fpcur bf in
         let abq, fpbq = alloc_bloc env fpcur bq in 
         ADecl_fct (fpbf, f, pl, abf) :: abq, fpbq
-      | Decl_instr i -> let ai, fpi = alloc_instr env fpcur i in
+      | TDecl_instr i -> let ai, fpi = alloc_instr env fpcur i in
         let abq, fpbq = alloc_bloc env (fpcur+fpi) bq in (ADecl_instr ai) :: abq, fpbq
 
 
@@ -101,12 +100,11 @@ let rec compile_expr = function
     | Apointer p -> compile_expr p
     | _ -> failwith "anomaly"
   end
-  | Abinop (b, e1, e2) -> compile_expr e1 ++ pushq (reg rdi) ++ 
-                          compile_expr e2 ++ pushq (reg rdi) ++ 
-                          popq rcx ++ popq rax ++
+  | Abinop (b, e1, e2) when (b != Badd && b != Bsub)
+                        -> compile_expr e1 ++ pushq (reg rdi) ++ 
+                           compile_expr e2 ++ pushq (reg rdi) ++ 
+                           popq rcx ++ popq rax ++
   (match b with
-    | Badd -> addq (reg rcx) (reg rax)
-    | Bsub -> subq (reg rcx) (reg rax)
     | Bmul -> imulq (reg rcx) (reg rax)
     | Bdiv -> cqto ++ idivq !%rcx
     | Bmod -> cqto ++ idivq !%rcx ++ movq (reg rdx) (reg rax)
@@ -123,8 +121,27 @@ let rec compile_expr = function
     | Bor -> let ltrue = get_new_label() in
       cmpq (imm 0) (reg rax) ++ movq (imm 1) (reg rax) ++ jne ltrue 
       ++ cmpq (imm 0) (reg rcx) ++ jne ltrue
-      ++ movq (imm 0) (reg rax) ++ label ltrue) 
+      ++ movq (imm 0) (reg rax) ++ label ltrue
+    | _ -> failwith "anomaly") 
     ++ movq (reg rax) (reg rdi)
+  | Abinop(Badd, e1, e2) -> begin match e1 with
+    | Apointer p1 -> nop
+    | _ ->     
+    compile_expr e1 ++ pushq (reg rdi) ++ 
+    compile_expr e2 ++ pushq (reg rdi) ++ 
+    popq rcx ++ popq rax ++ 
+    addq (reg rcx) (reg rax) ++ 
+    movq (reg rax) (reg rdi)
+  end
+  | Abinop(Bsub, e1, e2) -> begin match e1 with
+    | Apointer p1 -> nop
+    | _ -> 
+    compile_expr e1 ++ pushq (reg rdi) ++ 
+    compile_expr e2 ++ pushq (reg rdi) ++ 
+    popq rcx ++ popq rax ++ 
+    subq (reg rcx) (reg rax) ++ 
+    movq (reg rax) (reg rdi)
+  end
   | Anot e -> compile_expr e ++ cmpq (imm 0) (reg rdi) ++ movq (imm 0) (reg rdi) ++ sete (reg dil)
   | Aneg e -> compile_expr e ++ negq (reg rdi)
   | Aplus e -> compile_expr e
@@ -164,6 +181,7 @@ let rec compile_expr = function
     | Apointer p -> compile_expr (Aassign (p, Abinop(Bsub, p, Aint 8)))
     | _ -> compile_expr (Aassign (e, Abinop(Bsub, e, Aint 1)))
     end ++ popq rdi
+  | _ -> failwith "anomaly"
 
 let rec compile_instr ?(cl = ("","")) = function
   | ANone -> nop
@@ -178,7 +196,7 @@ let rec compile_instr ?(cl = ("","")) = function
     compile_instr ~cl:cl i1 ++ jmp l_endif ++
     label l_else ++ compile_instr ~cl:cl i2 ++
     label l_endif
-  | AFor (_, eo, el, i) -> let body_for = get_new_label() in let end_for = get_new_label() in
+  | AFor (eo, el, i) -> let body_for = get_new_label() in let end_for = get_new_label() in
     begin match eo with
       | None -> let cl = (body_for, end_for) in   
         label body_for ++ compile_instr ~cl:cl i ++ 
@@ -213,7 +231,7 @@ and compile_bloc ?(cl = ("","")) = function
     | ADecl_instr i -> compile_instr ~cl:cl i
     end ++ compile_bloc ~cl:cl bq
 
-let rec main (f:fichier) : X86_64.text = 
-  let _, decl_fcts = f in let file_bloc = (List.map (fun fct -> Decl_fct fct) decl_fcts) in
+let rec main (f:tfichier) : X86_64.text = 
+  let _, file_bloc = f in
   let file_abloc, _ = alloc_bloc (Smap.empty) 0 file_bloc in
   globl "main" ++ compile_bloc ~cl:("","") file_abloc ++ ret

@@ -57,6 +57,47 @@ and bloc = decl_instr list
 
 type fichier = include_ list * decl_fct list
 
+(* Après typage *)
+
+type tfichier = include_ list  * tblock
+and tdecl_fun = ctype * ident * param list * tblock
+
+and texpr = {tdesc : tdesc_e; ctype : ctype}
+
+and tdesc_e =
+  | TEint of int | True | False | Null
+  | TEident of ident
+  | TEpointer of texpr
+  | TEassign of texpr * texpr
+  | TEcall of ident * texpr list
+  | TEinc1 of texpr | TEdec1 of texpr | TEinc2 of texpr | TEdec2 of texpr
+  | TEaddress of texpr
+  | TEnot of texpr
+  | TEneg of texpr
+  | TEplus of texpr
+  | TEbinop of binop * texpr * texpr
+  | TEsizeof of ctype
+
+and tinstr = 
+  | TNone
+  | TExpr of texpr
+  | TIf of texpr * tinstr * tinstr 
+  | TWhile of texpr * tinstr
+  | TFor of texpr option * texpr list * tinstr
+  | TBloc of tblock
+  | TReturn of texpr option
+  | TBreak 
+  | TContinue
+
+and tblock = tdecl_instr list
+
+and tdecl_instr = 
+    | TDecl_fct of tdecl_fun
+    | TDecl_instr of tinstr
+    | TDecl_var of tdecl_var
+
+and tdecl_var = ctype * ident * texpr option
+
 (* Post-allocation des variables *)
 
 type shift = int
@@ -83,7 +124,7 @@ type ainstruction =
   | ABloc of abloc
   | AIf of aexpr * ainstruction * ainstruction
   | AWhile of aexpr * ainstruction
-  | AFor of adecl_var option * aexpr option * aexpr list * ainstruction
+  | AFor of aexpr option * aexpr list * ainstruction
   | AReturn of aexpr option 
   | ABreak
   | AContinue

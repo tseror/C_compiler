@@ -42,8 +42,8 @@ let () =
     close_in c;
     if !parse_only then exit 0;
     (* Typing *)
-    Typer.main f;
-    if !type_only then exit 0;
+    let f = Typer.main f in
+    if !type_only then exit 0 else
     let x86 = Compile.main f in 
     let name = List.hd (String.split_on_char '.' file) in
     X86_64.print_in_file (name^".s") {text = x86; data = X86_64.nop}
