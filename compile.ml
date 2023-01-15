@@ -80,7 +80,7 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
           (fun (env', ofs_p) p ->
             let ofs_p = ofs_p + 8 in Smap.add (snd p) ofs_p env', ofs_p)
           (env, 8) pl in (* changement: 8 au lieu de fpcur *)
-        let abf, fpbf = alloc_bloc env' fpcur bf in
+        let abf, fpbf = alloc_bloc env' 0 bf in
         let abq, fpbq = alloc_bloc env fpcur bq in 
         ADecl_fct (fpbf, f, pl, abf) :: abq, fpbq
       | TDecl_instr i -> let ai, fpi = alloc_instr env fpcur i in

@@ -3,63 +3,40 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-/* arithmetique de virgule fixe
-   precision q = 8192 i.e. 13 bits pour la partie decimale */
+// tri par tas
 
-int add(int x, int y) {
-  return x + y;
-}
-int sub(int x, int y) {
-  return x - y;
-}
-int mul(int x, int y) {
-  int t;
-  t = x * y;
-  return (t + 8192 / 2) / 8192;
-}
-int divide(int x, int y) {
-  int t;
-  t = x * 8192;
-  return (t + y / 2) / y;
-}
-int of_int(int x) {
-  return x * 8192;
-}
-
-int inside(int x, int y) {
-  int xn = of_int(0);
-  int yn = of_int(0);
-  for (int n = 0; n < 100; n++) {
-    int xn2 = mul(xn, xn);
-    int yn2 = mul(yn, yn);
-    if (add(xn2, yn2) > of_int(4)) return 0;
-    xn2 = add(sub(xn2, yn2), x);
-    yn = add(mul(of_int(2), mul(xn, yn)), y);
-    xn = xn2;
+void move_down(int *a, int i, int x, int n) {
+  while (1) {
+    int j = 2 * i + 1;
+    if (j >= n) break;
+    if (j + 1 < n && a[j] < a[j + 1]) { j++; }
+    if (a[j] <= x) break;
+    a[i] = a[j];
+    i = j;
   }
-  return 1;
+  a[i] = x;
 }
 
-void run(int steps) {
-  int xmin = of_int(-2);
-  int xmax = of_int(1);
-  int deltax = divide(sub(xmax, xmin), of_int(2 * steps));
-  int ymin = of_int(-1);
-  int ymax = of_int(1);
-  int deltay = divide(sub(ymax, ymin), of_int(steps));
-  for (int i = 0; i < steps; i++) {
-    int y = add(ymin, mul(of_int(i), deltay));
-    for (int j = 0; j < 2 * steps; j++) {
-      int x = add(xmin, mul(of_int(j), deltax));
-      if (inside(x, y))
-        putchar('0');
-      else
-        putchar('1');
-    }
-    putchar(10);
+void heapsort(int *a, int n) {
+  for (int k = n / 2 - 1; k >= 0; k--)
+    move_down(a, k, a[k], n);
+  for (int k = n - 1; k >= 1; k--) {
+    int v = a[k];
+    a[k] = a[0];
+    move_down(a, 0, v, k);
   }
 }
 
 int main() {
-  run(30);
+  int n = 5;
+  int *a = malloc(n * sizeof(int));
+  a[0] = 'd';
+  a[1] = 'e';
+  a[2] = 'a';
+  a[3] = 'b';
+  a[4] = 'c';
+  heapsort(a, n);
+  for (int i = 0; i < n; i++)
+    putchar(a[i]);
+  putchar('\n');
 }
