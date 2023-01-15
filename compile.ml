@@ -163,7 +163,9 @@ let rec compile_expr (exp:aexpr) = match exp.adesc with
     subq (reg rcx) (reg rax) ++ 
     movq (reg rax) (reg rdi)
   end
-  | Anot e -> compile_expr e ++ cmpq (imm 0) (reg rdi) ++ movq (imm 0) (reg rdi) ++ sete (reg dil)
+  | Anot e -> compile_expr e ++ cmpq (imm 0) (reg rdi) 
+              ++ movq (imm 0) (reg rdi) 
+              ++ sete (reg dil) ++ movzbq (reg dil) rdi
   | Aneg e -> compile_expr e ++ negq (reg rdi)
   | Aplus e -> compile_expr e
   | Asizeof t -> movq (imm 8) (reg rdi)
