@@ -172,7 +172,13 @@ and build_bloc (env:typeEnv) (b:bloc) = match b with
     | Decl_instr i -> TDecl_instr (build_instr env i) :: (build_bloc env bq)
     end
 and build_file (env:typeEnv) (f:fichier) =
-  let il, decl_fcts = f in (il, build_bloc env (List.map (fun fct -> Decl_fct fct) decl_fcts))
+  let il, decl_fcts = f in (il, build_bloc env (List.map (fun fct -> begin
+    let (t, f, pl, bf) = fct.desc_df in
+    if (f = "main") then begin 
+      let ret = [Decl_instr (Return (Some ({desc_e = Eint 0; loc = fct.loc}), fct.loc))] in 
+      Decl_fct {desc_df = (t, f, pl, bf@ret); loc = fct.loc}
+    end
+  else Decl_fct fct end) decl_fcts))
 
 let main(f:fichier) =
   let env = (IdMap.empty, IdMap.add "putchar" (Int, [Int]) (IdMap.add "malloc" (Star Void, [Int]) IdMap.empty)) in
