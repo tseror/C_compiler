@@ -12,7 +12,8 @@ module Smap = Map.Make(String)
 
 type local_env = shift Smap.t
 
-let rec alloc_expr (env: local_env) (exp:texpr) = match exp.tdesc with
+let rec alloc_expr (env: local_env) (exp:texpr) = 
+  let adesc = match exp.tdesc with
   | TEint i -> Aint i
   | True -> ATrue
   | False -> AFalse
@@ -42,6 +43,7 @@ let rec alloc_expr (env: local_env) (exp:texpr) = match exp.tdesc with
     let ae2 = alloc_expr env e2 in
     Abinop(b, ae1, ae2)
   | TEsizeof t -> Asizeof t
+  in {adesc = adesc; ctype = exp.ctype}
 
 let rec alloc_instr (env: local_env) (fpcur:int) = function
     | TNone -> ANone, 0
@@ -89,13 +91,13 @@ and alloc_bloc (env: local_env) (fpcur:int) = function
 
 let popn n = addq (imm n) !%rsp
 let pushn n = subq (imm n) !%rsp
-let rec compile_expr = function
+let rec compile_expr (exp:aexpr) = match exp.adesc with 
   | Aint i -> movq (imm i) (reg rdi)
   | ATrue -> movq (imm 1) (reg rdi) | AFalse -> movq (imm 0) (reg rdi)
   | ANull -> movq (imm 0) (reg rdi)
   | Avar ofs_x -> movq (ind ~ofs:ofs_x rbp) (reg rdi)
   | Apointer e -> compile_expr e ++ movq (ind rdi) (reg rdi)
-  | Aaddress e -> begin match e with
+  | Aaddress e -> begin match e.adesc with
     | Avar ofs_x -> leaq (ind ~ofs:ofs_x rbp) rdi
     | Apointer p -> compile_expr p
     | _ -> failwith "anomaly"
@@ -124,8 +126,14 @@ let rec compile_expr = function
       ++ movq (imm 0) (reg rax) ++ label ltrue
     | _ -> failwith "anomaly") 
     ++ movq (reg rax) (reg rdi)
-  | Abinop(Badd, e1, e2) -> begin match e1 with
-    | Apointer p1 -> nop
+  | Abinop(Badd, e1, e2) -> begin match e1.ctype with
+    | Star(_) ->
+    compile_expr e1 ++ pushq (reg rdi) ++ 
+    compile_expr e2 ++ imulq (imm 8) (reg rdi) ++
+    pushq (reg rdi) ++ 
+    popq rcx ++ popq rax ++ 
+    addq (reg rcx) (reg rax) ++ 
+    movq (reg rax) (reg rdi)
     | _ ->     
     compile_expr e1 ++ pushq (reg rdi) ++ 
     compile_expr e2 ++ pushq (reg rdi) ++ 
@@ -133,8 +141,21 @@ let rec compile_expr = function
     addq (reg rcx) (reg rax) ++ 
     movq (reg rax) (reg rdi)
   end
-  | Abinop(Bsub, e1, e2) -> begin match e1 with
-    | Apointer p1 -> nop
+  | Abinop(Bsub, e1, e2) -> begin match e1.ctype, e2.ctype with
+    | Star(_), Star(_) ->
+    compile_expr e1 ++ pushq (reg rdi) ++ 
+    compile_expr e2 ++ pushq (reg rdi) ++ 
+    popq rcx ++ popq rax ++
+    subq (reg rcx) (reg rax) ++
+    shrq (imm 3) (reg rax) ++
+    movq (reg rax) (reg rdi)
+    | Star(_), _ -> 
+    compile_expr e1 ++ pushq (reg rdi) ++ 
+    compile_expr e2 ++ imulq (imm 8) (reg rdi) ++
+    pushq (reg rdi) ++ 
+    popq rcx ++ popq rax ++ 
+    subq (reg rcx) (reg rax) ++ 
+    movq (reg rax) (reg rdi)
     | _ -> 
     compile_expr e1 ++ pushq (reg rdi) ++ 
     compile_expr e2 ++ pushq (reg rdi) ++ 
@@ -154,33 +175,23 @@ let rec compile_expr = function
       ++ call f ++ movq (reg rbx) (reg rsp) 
     else call f ++ popn (8*(List.length ael)) end
     ++ movq (reg rax) (reg rdi)
-  | Aassign (ea1, ea2) -> begin match ea1 with
+  | Aassign (ea1, ea2) -> begin match ea1.adesc with
     | Avar ofs_x -> compile_expr ea2 ++ movq (reg rdi) (ind ~ofs:ofs_x rbp)
     | Apointer address -> 
       compile_expr ea2 ++ movq (reg rdi) (reg rsi) ++ 
       compile_expr address ++ movq (reg rsi) (ind rdi)
     | _ -> failwith "anomaly"
   end
-  | Ainc1 e -> 
-    begin match e with
-    | Apointer p -> compile_expr (Aassign (p, Abinop(Badd, p, Aint 8)))
-    | _ -> compile_expr (Aassign (e, Abinop(Badd, e, Aint 1)))
-    end  ++ compile_expr e
-  | Adec1 e ->     
-    begin match e with
-    | Apointer p -> compile_expr (Aassign (p, Abinop(Bsub, p, Aint 8)))
-    | _ -> compile_expr (Aassign (e, Abinop(Bsub, e, Aint 1)))
-  end ++ compile_expr e
-  | Ainc2 e -> compile_expr e ++ pushq (reg rdi) ++
-    begin match e with
-    | Apointer p -> compile_expr (Aassign (p, Abinop(Badd, p, Aint 8)))
-    | _ -> compile_expr (Aassign (e, Abinop(Badd, e, Aint 1)))
-    end ++ popq rdi
-  | Adec2 e -> compile_expr e ++ pushq (reg rdi) ++
-    begin match e with
-    | Apointer p -> compile_expr (Aassign (p, Abinop(Bsub, p, Aint 8)))
-    | _ -> compile_expr (Aassign (e, Abinop(Bsub, e, Aint 1)))
-    end ++ popq rdi
+  | Ainc1 e -> compile_expr {adesc=(Aassign (e, {adesc=Abinop(Badd, e, {adesc=(Aint 1); ctype=Int}); ctype=Int})); ctype=e.ctype}
+               ++ compile_expr e
+  | Adec1 e -> compile_expr {adesc=(Aassign (e, {adesc=Abinop(Bsub, e, {adesc=(Aint 1); ctype=Int}); ctype=Int})); ctype=e.ctype}
+               ++ compile_expr e
+  | Ainc2 e -> compile_expr e ++ pushq (reg rdi) ++ 
+               compile_expr {adesc=(Aassign (e, {adesc=Abinop(Badd, e, {adesc=(Aint 1); ctype=Int}); ctype=Int})); ctype=e.ctype} 
+               ++ popq rdi
+  | Adec2 e -> compile_expr e ++ pushq (reg rdi) ++ 
+               compile_expr {adesc=(Aassign (e, {adesc=Abinop(Bsub, e, {adesc=(Aint 1); ctype=Int}); ctype=Int})); ctype=e.ctype}
+               ++ popq rdi
   | _ -> failwith "anomaly"
 
 let rec compile_instr ?(cl = ("","")) = function

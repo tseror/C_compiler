@@ -102,7 +102,8 @@ and tdecl_var = ctype * ident * texpr option
 
 type shift = int
 
-type aexpr =
+type aexpr = {adesc : adesc; ctype : ctype}
+and adesc =
   | Aint of int | ATrue | AFalse | ANull
   | Avar of shift
   | Apointer of aexpr
