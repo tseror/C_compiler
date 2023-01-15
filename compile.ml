@@ -55,7 +55,7 @@ let rec alloc_instr (env: local_env) (fpcur:int) = function
     | TContinue -> AContinue, 0
     | TIf (e, i1, i2) -> let ae = alloc_expr env e in 
       let ai1, fp1 = alloc_instr env fpcur i1 in let ai2, fp2 = alloc_instr env fpcur i2 in
-      AIf (ae, ai1, ai2), fp1 + fp2
+      AIf (ae, ai1, ai2), max fp1 fp2
     | TWhile (e, i) -> let ae = alloc_expr env e in let ai, fpi = alloc_instr env fpcur i in
       AWhile (ae, ai), fpi
     | TFor (None, el, i) -> let ael = List.map (alloc_expr env) el in
