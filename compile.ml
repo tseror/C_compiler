@@ -48,20 +48,20 @@ let rec alloc_expr (env: local_env) (exp:texpr) =
 let rec alloc_instr (env: local_env) (fpcur:int) = function
     | TNone -> ANone, 0
     | TExpr e -> let ae = alloc_expr env e in AExpr ae, 0
-    | TBloc b -> let ab, fp = alloc_bloc env fpcur b in ABloc(ab), 0
+    | TBloc b -> let ab, fp = alloc_bloc env fpcur b in ABloc(ab), fp
     | TReturn None -> AReturn None, 0
     | TReturn (Some e) -> let ae = alloc_expr env e in AReturn (Some ae), 0
     | TBreak -> ABreak, 0
     | TContinue -> AContinue, 0
     | TIf (e, i1, i2) -> let ae = alloc_expr env e in 
       let ai1, fp1 = alloc_instr env fpcur i1 in let ai2, fp2 = alloc_instr env fpcur i2 in
-      AIf (ae, ai1, ai2), 0 (*max fp1 fp2*)
+      AIf (ae, ai1, ai2), max fp1 fp2
     | TWhile (e, i) -> let ae = alloc_expr env e in let ai, fpi = alloc_instr env fpcur i in
-      AWhile (ae, ai), 0 (*fpi*)
+      AWhile (ae, ai), fpi
     | TFor (None, el, i) -> let ael = List.map (alloc_expr env) el in
-      let ai, fpi = alloc_instr env fpcur i in AFor(None, ael, ai), 0 (*fpi*)
+      let ai, fpi = alloc_instr env fpcur i in AFor(None, ael, ai), fpi
     | TFor (Some e, el, i) -> let ae = alloc_expr env e in let ael = List.map (alloc_expr env) el in
-      let ai, fpi = alloc_instr env fpcur i in AFor(Some ae, ael, ai), 0 (*fpi*)
+      let ai, fpi = alloc_instr env fpcur i in AFor(Some ae, ael, ai), fpi
 
 and alloc_bloc (env: local_env) (fpcur:int) = function
     | [] -> [], fpcur
