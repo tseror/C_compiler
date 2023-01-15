@@ -110,12 +110,12 @@ let rec compile_expr (exp:aexpr) = match exp.adesc with
     | Bmul -> imulq (reg rcx) (reg rax)
     | Bdiv -> cqto ++ idivq !%rcx
     | Bmod -> cqto ++ idivq !%rcx ++ movq (reg rdx) (reg rax)
-    | Beqq -> cmpq (reg rcx) (reg rax) ++ sete (reg al)
-    | Bneq -> cmpq (reg rcx) (reg rax) ++ setne (reg al)
-    | Blt -> cmpq (reg rcx) (reg rax) ++ setl (reg al)
-    | Ble -> cmpq (reg rcx) (reg rax) ++ setle (reg al)
-    | Bgt -> cmpq (reg rcx) (reg rax) ++ setg (reg al)
-    | Bge -> cmpq (reg rcx) (reg rax) ++ setge (reg al)
+    | Beqq -> cmpq (reg rcx) (reg rax) ++ sete (reg al) ++ movzbq (reg al) rax
+    | Bneq -> cmpq (reg rcx) (reg rax) ++ setne (reg al) ++ movzbq (reg al) rax
+    | Blt -> cmpq (reg rcx) (reg rax) ++ setl (reg al) ++ movzbq (reg al) rax
+    | Ble -> cmpq (reg rcx) (reg rax) ++ setle (reg al) ++ movzbq (reg al) rax
+    | Bgt -> cmpq (reg rcx) (reg rax) ++ setg (reg al) ++ movzbq (reg al) rax
+    | Bge -> cmpq (reg rcx) (reg rax) ++ setge (reg al) ++ movzbq (reg al) rax
     | Band -> let lfalse = get_new_label() in
       cmpq (imm 0) (reg rax) ++ movq (imm 0) (reg rax) ++ je lfalse 
       ++ cmpq (imm 0) (reg rcx) ++ je lfalse
