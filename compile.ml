@@ -175,7 +175,7 @@ let rec compile_expr (exp:aexpr) = match exp.adesc with
     if f = "putchar" || f = "malloc" then 
       popq rdi ++ movq (reg rsp) (reg rbx) ++ andq (imm (-16)) (reg rsp)
       ++ call f ++ movq (reg rbx) (reg rsp) 
-    else call f ++ popn (8*(List.length ael)) end
+    else call f ++ popn (8*(List.length ael + 1)) end
     ++ movq (reg rax) (reg rdi)
   | Aassign (ea1, ea2) -> begin match ea1.adesc with
     | Avar ofs_x -> compile_expr ea2 ++ movq (reg rdi) (ind ~ofs:ofs_x rbp)
@@ -187,7 +187,7 @@ let rec compile_expr (exp:aexpr) = match exp.adesc with
   | Ainc1 e -> compile_expr {adesc=(Aassign (e, {adesc=Abinop(Badd, e, {adesc=(Aint 1); ctype=Int}); ctype=Int})); ctype=e.ctype}
                ++ compile_expr e
   | Adec1 e -> compile_expr {adesc=(Aassign (e, {adesc=Abinop(Bsub, e, {adesc=(Aint 1); ctype=Int}); ctype=Int})); ctype=e.ctype}
-               ++ compile_expr e
+               ++ compile_expr e  
   | Ainc2 e -> compile_expr e ++ pushq (reg rdi) ++ 
                compile_expr {adesc=(Aassign (e, {adesc=Abinop(Badd, e, {adesc=(Aint 1); ctype=Int}); ctype=Int})); ctype=e.ctype} 
                ++ popq rdi
